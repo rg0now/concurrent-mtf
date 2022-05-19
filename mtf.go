@@ -2,19 +2,8 @@ package main
 
 import (
         "fmt"
+        "strings"
 )
-
-type MtfItem struct {
-        id Id
-}
-
-func (i MtfItem) Id() Id {
-        return i.id
-}
-
-func (i MtfItem) Match(j Id) bool {
-        return i.id == j
-}
 
 type MtfNode struct {
         value *Item
@@ -24,6 +13,10 @@ type MtfNode struct {
 type Mtf struct {
         head *MtfNode
         len int
+}
+
+func NewMtf() *Mtf {
+        return &Mtf{head: nil, len: 0}
 }
 
 func (l *Mtf) Add(i *Item) {
@@ -47,15 +40,19 @@ func (l *Mtf) Add(i *Item) {
 }
 
 // Print displays all the nodes from linked list
-func (l *Mtf) Dump() {
+func (l *Mtf) String() string {
+        ret := fmt.Sprintf("Mtf: size %d: ", l.len)
+        var ns []string
 	if l.len == 0 {
-		fmt.Println("-")
+		ns = append(ns, "-")
+	} else {
+                ptr := l.head
+                for j := 0; j < l.len; j++ {
+                        ns = append(ns, fmt.Sprintf("Node: %d", (*ptr.value).Id()))
+                        ptr = ptr.next
+                }
 	}
-	ptr := l.head
-        for j := 0; j < l.len; j++ {
-		fmt.Println("Node: ", (*ptr.value).Id())
-		ptr = ptr.next
-	}
+        return ret + strings.Join(ns, ", ")       
 }
 
 // Search returns node position with given value from linked list
@@ -76,7 +73,7 @@ func (l *Mtf) Find(val Id) int {
                                 l.head = ptr
                         }
 
-                        if verbose {l.Dump()}
+                        if verbose {log(l.String())}
                         return j
 		}
                 prev = ptr

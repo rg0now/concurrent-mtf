@@ -4,12 +4,15 @@ import (
         "fmt"
         "time"
         "os"
-        // "context"
+        "strings"
         "sync"
 
         flag "github.com/spf13/pflag"
 )
 
+
+const BufferSize int = 30
+//const BufferSize int = 1
 
 var verbose bool = false
 
@@ -18,8 +21,6 @@ func log(format string, v ...any) {
                 fmt.Printf(format + "\n", v...)
         }
 }
-
-const BufferSize int = 30
 
 type Id = int
 type Channel chan Id
@@ -40,7 +41,7 @@ type LoadBalancer interface {
 type DataStructure interface {
         Add(p *Item)
         Find(i Id) int
-        Dump()
+        String() string
 }
 
 type Thread struct {
@@ -54,7 +55,8 @@ func main() {
         var n       = flag.IntP("req_num", "n", 10, "Number of requests.")
         var m       = flag.IntP("item_num", "m", 5, "Number of items.")
         var k       = flag.IntP("thread_num", "k", 1, "Number of threads.")
-        var v       = flag.BoolP("verbose", "v", false,    "Verbose logging, identical to <-l all:DEBUG>.")
+        var ds      = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay (default: mtf).")
+        var v       = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
         flag.Parse()
         verbose = *v
 
@@ -68,7 +70,7 @@ func main() {
         // items
         is := make([]Item, *m)
         for j := 0; j < *m; j++ {
-                is[j] = MtfItem{j}
+                is[j] = IntegerItem{j}
         }
         
         // comm channels
@@ -85,7 +87,13 @@ func main() {
         wg.Add(*k)
         for j := 0; j < *k; j++ {
                 // create data-structure
-                d := &Mtf{head: nil, len: 0}
+                var d DataStructure
+                switch strings.ToLower(*ds) {
+                case "mtf": d   = NewMtf()
+                case "cache": d = NewLruCache(&is)
+                default: panic("Unknown data structure: " + *ds)
+                }
+                
                 for i := 0; i < *m; i++ {
                         d.Add(&is[i])
                 }
@@ -98,6 +106,10 @@ func main() {
                         l := t.d
                         found := 0
                         for r := range t.rx {
+                                if verbose {
+                                        log("Thread %d: %s", j, l.String())
+                                }
+
                                 i := l.Find(r)
                                 if i >= 0 {
                                         found++

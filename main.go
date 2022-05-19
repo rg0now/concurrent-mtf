@@ -52,21 +52,24 @@ type Thread struct {
 func main() {
         // general flags
         os.Args[0] = "cmtf"
-        var n       = flag.IntP("req_num", "n", 10, "Number of requests.")
-        var m       = flag.IntP("item_num", "m", 5, "Number of items.")
-        var k       = flag.IntP("thread_num", "k", 1, "Number of threads.")
-        var ds      = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay (default: mtf).")
-        var v       = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
+        var n   = flag.IntP("req_num", "n", 10, "Number of requests.")
+        var m   = flag.IntP("item_num", "m", 5, "Number of items.")
+        var k   = flag.IntP("thread_num", "k", 1, "Number of threads.")
+        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay (default: mtf).")
+        var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
+        var sp  = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split (default: modulo).")
+        var v   = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
         flag.Parse()
         verbose = *v
 
         // source
-        s := UniformSource {
-                n: *n,
-                m: *m,
-                i: 0,
+        var s Source
+        switch strings.ToLower(*src) {
+        case "uniform": s = &UniformSource{n: *n, m: *m, i: 0}
+        case "poisson": s = NewPoissonSource(*m, *n, float64(*m)/4.0)
+        default: panic("Unknown source type: " + *src)
         }
-
+        
         // items
         is := make([]Item, *m)
         for j := 0; j < *m; j++ {
@@ -80,7 +83,12 @@ func main() {
         }
 
         // loadbalancer
-        lb := NewModuloLB(*k, cs)
+        var lb LoadBalancer
+        switch strings.ToLower(*sp) {
+        case "modulo": lb = NewModuloLB(*k, cs)
+        case "split":  lb = NewSplitLB(*k, *m, cs)
+        default: panic("Unknown load-balancer: " + *sp)
+        }
 
         // init threads
         wg := new(sync.WaitGroup)
@@ -89,8 +97,9 @@ func main() {
                 // create data-structure
                 var d DataStructure
                 switch strings.ToLower(*ds) {
-                case "mtf": d   = NewMtf()
+                case "mtf":   d = NewMtf()
                 case "cache": d = NewLruCache(&is)
+                case "splay": d = NewSplayTree()
                 default: panic("Unknown data structure: " + *ds)
                 }
                 

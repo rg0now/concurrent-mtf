@@ -6,8 +6,10 @@ import (
         "time"
 )
 
-const BusyWait = 100 * time.Microsecond
-const CacheSize float64 = 0.2
+//const BusyWait = 1 * time.Microsecond
+const BusyWait = 100 * time.Nanosecond
+//const CacheSize float64 = 0.2
+const CacheSize float64 = 0.025
 
 type lruCacheNode struct {
         value *Item

@@ -14,11 +14,10 @@
 One major obstacle faced by network engineers is how to harness the massive computing power, which
 increasingly comes in the form of parallel processing cores, given that Amdahl's law predicts
 diminishing returns for massive-scale parallelization.  Using three simple illustrative models, we
-show that the combination of /locality-boosting job scheduling/ (i.e., load-balancing) and
-/parallel self-adjusting data structures/ allows to achieve superlinear scaling for some typical
-massively parallel networking workloads. We demonstrate quadratic scale-up in certain cases and,
-strikingly, we show that parallelization yields linear scaling even if we keep the total amount of
-available computing power constant.
+show that the combination of /locality-boosting load-balancing/ and /parallel self-adjusting data
+structures/ allows to achieve superlinear scaling for some typical massively parallel networking
+workloads. We demonstrate quadratic scale-up in certain cases and, strikingly, we show that
+parallelization yields linear scaling even if we keep the total available computing power constant.
 
 * Introduction
 - simply put, Amdahl's law states that throwing additional processors to a fixed-size parallel
@@ -46,11 +45,65 @@ available computing power constant.
 #+ATTR_LATEX: :width 9cm
 [[file:usl.png]]
 
-* Model
+* Motivation
 
+- the pattern "distribute requests to a set of concurrent worker threads" is fairly familiar in
+  networking
+  - endhost network stacks: NIC hashes packet headers and RSS distributes packets based on the hash
+    across a set of CPUs
+  - HTTP load-balancers with "sticky sessions": split requests based on the source IP and allocate
+    each to a backend server, same user will always end up at the same backend
+  - sharded key-value stores (like REDIS): client splits queries based on the key-hash, each shard
+    handles only a subset of the hash-space
+  - anything else?
+- this pattern has proved remarkably useful: since networking workloads are typically massively
+  parallel, with minimal need for synchronization across the threads, we usually get linear
+  speed-up
+- of course, the load-balancer is still serial so Amdahl's law curtails max performance at the
+  load-balancer's throughput
+- we argue that there is even more to this model than we would have thought, which may even yield
+  superlinear speedup for careful implementations
+- this is made possible by the unique combination of two important components, locality boosting
+  load-balancing and self-adjusting worker threads, that may further improve efficiency even
+  without us being aware
+
+** Locality boosting load-balancing
+- the idea in all use-cases above is that requests to the same or "similar" items are processes at
+  the same worker: 5-tuple hashes in RSS, per-source-IP load-splitting in HTTP load-balancers,
+  key-hashes in sharded key-value stores, they always keep similar jobs at the same worker (TODO:
+  make this argument more precise!)
+- this improves temporal and/or spatial locality as experienced by the worker threads
+- round-robin or random load-balancing promote locality in the input to the workers: not "locality
+  boosting"
+- hash-based load-balancing or range-based splitting: improves locality (TODO: can we reason about
+  this in simple terms?)
+
+** Self-adjusting data structures
+- a self-adjusting data structure can rearrange itself as queries are committed to it in order to
+  improve efficiency on future requests
+- exploit locality of reference in the input
+- red-black trees or AVL trees rearrange with respect to the stored data to keep the search tree
+  balanced: not self-adjusting
+
+** Idea
+- a locality boosting load-balancer splits requests so that worker threads experience improved
+  locality of reference
+- self-adjusting data structures at the workers exploit the improved locality in the input they
+  process
+- the more threads the greater the locality in the per-thread request sequences, and the more
+  efficient the self-adjustments
+- the superlinear scaling thanks to self-adjustments initially outweigh the slowdowns predicted by
+  Amdahl's law
+- eventually of course Amdahl's law kicks in and performance saturates, but up to that point we
+  expect superlinear scaling
+
+* Case Studies
+
+** Model
 - a source emits requests (jobs) for $m$ items (we assume a uniform source below)
 - a job scheduler (essentially a load-balancer) allocates the requests to workers
 - $k$ parallel worker threads running on $n\le k$ CPU cores
+- models implemented in Go, evaluated on a 24-core Intel x86 server
 
 :                                        +--------+
 :                                 +----->|Thread 1|
@@ -66,40 +119,16 @@ available computing power constant.
 :                                 +----->|Thread k|
 :                                        +--------+
 
-** Locality boosting load-balancing
-- improve temporal and/or spatial locality as experienced by worker threads
-- round-robin or random load-balancing: preserves locality in the input
-- hash-based load-balancing or range-based splitting: improves locality
-- simple example...
-
-** Self-adjusting data structures
-- a self-adjusting data structure can rearrange itself as queries are committed to it in order to
-  improve efficiency on future requests
-- exploit locality of reference in the input
-- red-black trees or AVL trees rearrange with respect to the stored data to keep the search tree
-  balanced: not self-adjusting
-
-** Idea
-- a locality boosting load-balancer splits the request sequence so that worker threads experience
-  improved locality of reference
-- self-adjusting data structures at the workers exploit the improved locality in the input they
-  process
-- the more threads the greater the locality in the per-thread request sequences, and the more
-  efficient the self-adjustments
-- the superlinear scaling thanks to self-adjustments initially outweigh the slowdowns predicted by
-  Amdahl's law
-- eventually of course Amdahl's law kicks in and performance saturates, but up to that point we
-  expect superlinear sclaling
-
-
-* Case Studies
-
 ** Caching
-- networking applications: key-value stores [ebpf/NSDI], FIB caching [linux]
-- lookup time: $l = \delta + (1-\delta)\rho$, where $\delta$ is the cache hit rate and $\rho$ is
-  the cost of a cache miss
-- we assume $\delta=.025$ and $\rho=100$
+- simplest self-adjusting data-structure: LRU cache
+- we get caches by default in all current CPUs, but many networking applications explicitly contain
+  a fast-path/cache component: key-value stores [ebpf/NSDI], FIB caching [linux], flow-caches as a
+  fast-path in OvS, etc.
+- strikingly, caches alone, paired with a locality boosting load-balancer (like RSS), can already
+  provide superlinear scaling as we show below
 *** Analysis
+- lookup time: $l = \delta + (1-\delta)\rho$, where $\delta$ is the cache hit rate and $\rho$ is
+  the cost of a cache miss; we assume $\delta=.025$ and $\rho=100$
 - if all requests are processed on a single thread, that thread will experience a cache hit rate of
   $\delta$ on $m$ items
 - if the request set is randomly split into $k$ partitions, then the working set at each thread
@@ -111,7 +140,7 @@ available computing power constant.
 - for $n=k$ this yields superlinear $O(\frac{k}{b - k})$ scaling
     
 *** Multicore scaling
-- $n=k$
+- $n=k$: superlinear scaling confirmed
 
 #+TBLNAME:tab-cache-no-cpu-bound
 |  c |     m |       n | t             |              q |
@@ -184,7 +213,9 @@ available computing power constant.
 [[file:cache-no-cpu-bound.png]]
   
 *** Scaling on a single core
-- $n=1$
+- $n=1$: we see a linear yield for running $k$ parallel threads even if we restrict the system to a
+  single CPU core
+  
 #+TBLNAME:tab-cache-cpu-bound-150
 |  c |     m |       n | t               |             q |
 |----+-------+---------+-----------------+---------------|
@@ -260,7 +291,7 @@ available computing power constant.
 - networking: packet classification, ternary flow tables, intrusion detection
 
 *** Analysis
-- worst-case lookup time on one thread is $\frac1{2}m$, where the working-set size equals $m$
+- average lookup time on one thread is $\frac1{2}m$, where the working-set size equals $m$
 - randomly splitting items to $k$ partitions also partition the working sets, yielding $l_k =
   \frac{m}{2k}$ lookup time
 - throughput on $k$ threads: $t_k = \frac1{l_k} = \frac{2 k}{m}$
@@ -412,7 +443,7 @@ available computing power constant.
 [[file:cmtf-cpu-bound-150.png]]
 
 ** Splay tree
-- networking applications: ?
+- networking applications: maybe FIB lookups?
   
 *** Multicore scaling
 - $n=k$
@@ -479,7 +510,7 @@ available computing power constant.
   # set yrange [0:16]
   set xlabel "#thread"
   set ylabel "Req/sec"
-  f(x) = 865395*x
+  f(x) = 865395 + 20000*x
   plot f(x) w lines title 'linear scaling', \
        data u 1:5 w lp lw 2 title 'splaytree'
 #+end_src

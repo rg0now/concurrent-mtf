@@ -55,9 +55,9 @@ func main() {
         var n   = flag.IntP("req_num", "n", 10, "Number of requests.")
         var m   = flag.IntP("item_num", "m", 5, "Number of items.")
         var k   = flag.IntP("thread_num", "k", 1, "Number of threads.")
-        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay (default: mtf).")
+        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay|linkedlist (default: mtf).")
         var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
-        var sp  = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split (default: modulo).")
+        var sp  = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
         var v   = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
         flag.Parse()
         verbose = *v
@@ -97,9 +97,10 @@ func main() {
                 // create data-structure
                 var d DataStructure
                 switch strings.ToLower(*ds) {
-                case "mtf":   d = NewMtf()
-                case "cache": d = NewLruCache(&is)
-                case "splay": d = NewSplayTree()
+                case "mtf":        d = NewMtf()
+                case "linkedlist": d = NewLinkedList()
+                case "cache":      d = NewLruCache(&is)
+                case "splay":      d = NewSplayTree()
                 default: panic("Unknown data structure: " + *ds)
                 }
                 

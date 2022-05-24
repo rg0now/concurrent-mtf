@@ -33,3 +33,21 @@ func (lb *SplitLB) Assign(r Id) {
         log("SplitLB: Assigning item %d to thread %d", r, j)
         lb.pool[j] <- r
 }
+
+type RoundRobinLB struct {
+        k, i int
+        pool []Channel
+}
+
+func NewRoundRobinLB(k int, cs []Channel) *RoundRobinLB {
+        log("RoundRobinLB: Creating RoundRobinLB for %d threads", k)
+        lb := &RoundRobinLB{i: 0, k: k, pool: cs}
+        return lb
+}
+
+func (lb *RoundRobinLB) Assign(r Id) {
+        j := lb.i % lb.k
+        log("RoundRobinLB: Assigning item %d to thread %d", r, j)
+        lb.pool[j] <- r
+        lb.i += 1
+}

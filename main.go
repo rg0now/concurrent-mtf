@@ -85,8 +85,9 @@ func main() {
         // loadbalancer
         var lb LoadBalancer
         switch strings.ToLower(*sp) {
-        case "modulo": lb = NewModuloLB(*k, cs)
-        case "split":  lb = NewSplitLB(*k, *m, cs)
+        case "modulo":     lb = NewModuloLB(*k, cs)
+        case "split":      lb = NewSplitLB(*k, *m, cs)
+        case "roundrobin": lb = NewRoundRobinLB(*k, cs)
         default: panic("Unknown load-balancer: " + *sp)
         }
 

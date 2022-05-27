@@ -6,11 +6,6 @@ import (
         "time"
 )
 
-//const BusyWait = 1 * time.Microsecond
-const BusyWait = 100 * time.Nanosecond
-//const CacheSize float64 = 0.2
-const CacheSize float64 = 0.025
-
 type lruCacheNode struct {
         value *Item
         timestamp time.Time
@@ -83,10 +78,15 @@ func (l *LruCache) Find(val Id) int {
                 l.cache[id] = newEntry
 
                 // make cache miss slow
-                time.Sleep(BusyWait)
+                // time.Sleep(BusyWait)
+                res := 0
+                for i := 0; i < BusyWait; i++ {
+                        res += -1
+                }
 
                 // log("after: %s", l.String())
 
-                return -1
+                // so that the for loop is not compiled out
+                return res
         }
 }

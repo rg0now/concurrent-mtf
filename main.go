@@ -11,8 +11,12 @@ import (
 )
 
 
+const BusyWait = 10000
 const BufferSize int = 30
 //const BufferSize int = 1
+//const CacheSize float64 = 0.2
+// const CacheSize float64 = 0.025
+const CacheSize float64 = 0.1
 
 var verbose bool = false
 
@@ -55,34 +59,34 @@ func main() {
         var n   = flag.IntP("req_num", "n", 10, "Number of requests.")
         var m   = flag.IntP("item_num", "m", 5, "Number of items.")
         var k   = flag.IntP("thread_num", "k", 1, "Number of threads.")
-        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|splay|linkedlist (default: mtf).")
+        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|staticcache|splay|linkedlist (default: mtf).")
         var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
         var sp  = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
         var v   = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
         flag.Parse()
         verbose = *v
 
-        // source
-        var s Source
-        switch strings.ToLower(*src) {
-        case "uniform": s = &UniformSource{n: *n, m: *m, i: 0}
-        case "poisson": s = NewPoissonSource(*m, *n, float64(*m)/4.0)
-        default: panic("Unknown source type: " + *src)
-        }
-        
-        // items
+        log("Creating item list")
         is := make([]Item, *m)
         for j := 0; j < *m; j++ {
                 is[j] = IntegerItem{j}
         }
         
-        // comm channels
+        log("Creating source")
+        var s Source
+        switch strings.ToLower(*src) {
+        case "uniform": s = &UniformSource{n: *n, m: *m, i: 0}
+        case "poisson": s = NewPoissonSource(*m, *n, float64(*m)/2.0, &is)
+        default: panic("Unknown source type: " + *src)
+        }
+        
+        log("Creating comm channels")
         cs := make([]Channel, *k)
         for j := 0; j < *k; j++ {
                 cs[j] = make(Channel, BufferSize)
         }
 
-        // loadbalancer
+        log("Creating LB")
         var lb LoadBalancer
         switch strings.ToLower(*sp) {
         case "modulo":     lb = NewModuloLB(*k, cs)
@@ -91,17 +95,18 @@ func main() {
         default: panic("Unknown load-balancer: " + *sp)
         }
 
-        // init threads
+        log("Initializing threads")
         wg := new(sync.WaitGroup)
         wg.Add(*k)
         for j := 0; j < *k; j++ {
                 // create data-structure
                 var d DataStructure
                 switch strings.ToLower(*ds) {
-                case "mtf":        d = NewMtf()
-                case "linkedlist": d = NewLinkedList()
-                case "cache":      d = NewLruCache(&is)
-                case "splay":      d = NewSplayTree()
+                case "cache":       d = NewLruCache(&is)
+                case "staticcache": d = NewStaticCache(&is)
+                case "mtf":         d = NewMtf()
+                case "linkedlist":  d = NewLinkedList()
+                case "splay":       d = NewSplayTree()
                 default: panic("Unknown data structure: " + *ds)
                 }
                 
@@ -132,7 +137,7 @@ func main() {
                 }()
         }
 
-        // main loop
+        log("Starting main loop")
         t0 := time.Now()
         for {
                 i, err := s.Generate()
@@ -149,5 +154,7 @@ func main() {
         wg.Wait()
         t1 := time.Now()
         d := t1.Sub(t0)
+
+        log("Done")
         fmt.Printf("%d\t%d\t%d\t%v\t%f\n", *k, *m, *n, d, float64(*n)/d.Seconds())
 }

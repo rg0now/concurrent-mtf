@@ -61,7 +61,10 @@ func (l *LinkedList) Find(val Id) int {
 	ptr := l.head
         for j := 0; j < l.len; j++ {
 		if (*ptr.value).Match(val) {
-                        if verbose {log(l.String())}
+                        if verbose {
+                                log("LinkedList: found id %d at position %d", *(ptr.value), j)
+                                log(l.String())
+}
                         return j
 		}
 		ptr = ptr.next

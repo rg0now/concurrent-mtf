@@ -73,7 +73,10 @@ func (l *Mtf) Find(val Id) int {
                                 l.head = ptr
                         }
 
-                        if verbose {log(l.String())}
+                        if verbose {
+                                log("Mtf: found id %d at position %d", *(ptr.value), j)
+                                log(l.String())
+                        }
                         return j
 		}
                 prev = ptr

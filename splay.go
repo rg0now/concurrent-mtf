@@ -1,43 +1,51 @@
 package main
 
 import (
-        "fmt"        
-        "strings"
+        // "fmt"        
+        // "strings"
 
-        splay "github.com/gijsbers/go-splaytree"
+        // splay "github.com/gijsbers/go-splaytree"
+        // splay "github.com/golang/collections/splay"
+        splay "github.com/golang-collections/collections/splay"
 )
 
 // const SplaySparseness = 150
+
+// type SplayItem struct {
+//         i int
+// }
+
+// func (a SplayItem) Less(b splay.Item) bool {
+//         return a.i < b.(SplayItem).i
+// }
+
 
 type SplayTree struct {
         tree *splay.SplayTree 
 }
 
-func (i IntegerItem) Less(than splay.Item) bool {
-	return i.id < than.(IntegerItem).id
+func Less(a, b interface{}) bool {
+        return a.(Item).Id() < b.(Item).Id()
 }
 
 func NewSplayTree() *SplayTree {
         log("SplayTree: %s", "creating")
-        l := &SplayTree{tree: splay.NewSplayTree()}
+        l := &SplayTree{tree: splay.New(Less)}
         return l;
 }
 
-func (l *SplayTree) Add(i *Item) {
-        log("SplayTree: adding item %d", (*i).Id())
-        l.tree.Insert((*i).(IntegerItem))
+func (l *SplayTree) Add(i Item) {
+        log("SplayTree: adding item %d", i.Id())
+        l.tree.Add(i)
 }
 
 func (l *SplayTree) String() string {
-        ret := fmt.Sprintf("SplayTree: size %d, root: %d: ", l.tree.Count(), l.tree.Root())
-        var ns []string
-	l.tree.Traverse(func(i splay.Item) { ns = append(ns, fmt.Sprintf("%v ", i)) })
-        return ret + strings.Join(ns, ", ")
+        return l.tree.String()
 }
 
-func (l *SplayTree) Find(val Id) int {
+func (l *SplayTree) Find(val Item) int {
         log("SplayTree: find id %d", val)
-        i := l.tree.Lookup(IntegerItem{val})
+        i := l.tree.Get(val)
         if i != nil {
                 return 1
         } else {

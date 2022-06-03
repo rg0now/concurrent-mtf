@@ -10,14 +10,14 @@ type UniformSource struct {
         m, n, i int
 }
 
-func (s *UniformSource) Generate() (Id, error) {
+func (s *UniformSource) Generate() (Item, error) {
         if s.i < s.n {
                 s.i++
                 i := rand.Intn(s.m)
                 log("Source: generating req %d: %d", s.i, i)
-                return i, nil
+                return IntegerItem{i}, nil
         } else {
-                return 0, fmt.Errorf("Done")
+                return IntegerItem{}, fmt.Errorf("Done")
         }
 }
 
@@ -39,7 +39,7 @@ func NewPoissonSource(m, n int, la float64, store *([]Item)) *PoissonSource {
         return s 
 }
 
-func (s *PoissonSource) Generate() (Id, error) {
+func (s *PoissonSource) Generate() (Item, error) {
         if s.i < s.n {
                 s.i++
                 i := int(s.rand.Rand())
@@ -47,8 +47,8 @@ func (s *PoissonSource) Generate() (Id, error) {
                         i = s.m-1
                 }
                 log("Source: generating req %d: %d", s.i, s.store[i].Id())
-                return s.store[i].Id(), nil
+                return s.store[i], nil
         } else {
-                return 0, fmt.Errorf("Done")
+                return IntegerItem{}, fmt.Errorf("Done")
         }
 }

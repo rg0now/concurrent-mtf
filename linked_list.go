@@ -6,7 +6,7 @@ import (
 )
 
 type LinkedListNode struct {
-        value *Item
+        value Item
         next  *LinkedListNode
 }
 
@@ -19,8 +19,8 @@ func NewLinkedList() *LinkedList {
         return &LinkedList{head: nil, len: 0}
 }
 
-func (l *LinkedList) Add(i *Item) {
-        log("LinkedList: adding item %d", (*i).Id())
+func (l *LinkedList) Add(i Item) {
+        log("LinkedList: adding item %d", i.Id())
         n := LinkedListNode{}
         n.value = i
         if l.len == 0 {
@@ -48,7 +48,7 @@ func (l *LinkedList) String() string {
 	} else {
                 ptr := l.head
                 for j := 0; j < l.len; j++ {
-                        ns = append(ns, fmt.Sprintf("Node: %d", (*ptr.value).Id()))
+                        ns = append(ns, fmt.Sprintf("Node: %d", ptr.value.Id()))
                         ptr = ptr.next
                 }
 	}
@@ -56,13 +56,13 @@ func (l *LinkedList) String() string {
 }
 
 // Search returns node position with given value from linked list
-func (l *LinkedList) Find(val Id) int {
-        log("LinkedList: find id %d", val)
+func (l *LinkedList) Find(val Item) int {
+        log("LinkedList: find id %d", val.Id())
 	ptr := l.head
         for j := 0; j < l.len; j++ {
-		if (*ptr.value).Match(val) {
+		if ptr.value.Match(val.Id()) {
                         if verbose {
-                                log("LinkedList: found id %d at position %d", *(ptr.value), j)
+                                log("LinkedList: found id %d at position %d", ptr.value, j)
                                 log(l.String())
 }
                         return j
@@ -71,4 +71,3 @@ func (l *LinkedList) Find(val Id) int {
 	}
 	return -1
 }
-

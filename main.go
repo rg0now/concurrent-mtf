@@ -11,12 +11,14 @@ import (
 )
 
 
-const BusyWait = 10000
-const BufferSize int = 30
+const BusyWait = 50000
+// const BusyWait = 100000
+const BufferSize int = 1000
 //const BufferSize int = 1
 //const CacheSize float64 = 0.2
 // const CacheSize float64 = 0.025
-const CacheSize float64 = 0.1
+// const CacheSize float64 = 0.1
+const CacheSize float64 = 0.05
 
 var verbose bool = false
 
@@ -27,28 +29,30 @@ func log(format string, v ...any) {
 }
 
 type Id = int
-type Channel chan Id
+type Channel chan Item
 
 type Item interface {
+        Less(Item) bool
         Id() Id
         Match(i Id) bool
 }
 
 type Source interface {
-        Generate() (Id, error)
+        Generate() (Item, error)
 }
 
 type LoadBalancer interface {
-        Assign(i Id)
+        Assign(i Item)
 }
 
 type DataStructure interface {
-        Add(p *Item)
-        Find(i Id) int
+        Add(p Item)
+        Find(i Item) int
         String() string
 }
 
 type Thread struct {
+        id int
         rx Channel
         d DataStructure
 }
@@ -59,7 +63,7 @@ func main() {
         var n   = flag.IntP("req_num", "n", 10, "Number of requests.")
         var m   = flag.IntP("item_num", "m", 5, "Number of items.")
         var k   = flag.IntP("thread_num", "k", 1, "Number of threads.")
-        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: mtf|cache|staticcache|splay|linkedlist (default: mtf).")
+        var ds  = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree (default: mtf).")
         var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
         var sp  = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
         var v   = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
@@ -102,28 +106,29 @@ func main() {
                 // create data-structure
                 var d DataStructure
                 switch strings.ToLower(*ds) {
-                case "cache":       d = NewLruCache(&is)
-                case "staticcache": d = NewStaticCache(&is)
+                case "cache":       d = NewLruCache(*m, true)
+                case "statcache":   d = NewLruCache(*m, false)
                 case "mtf":         d = NewMtf()
                 case "linkedlist":  d = NewLinkedList()
                 case "splay":       d = NewSplayTree()
+                case "btree":       d = NewBTree()
                 default: panic("Unknown data structure: " + *ds)
                 }
                 
                 for i := 0; i < *m; i++ {
-                        d.Add(&is[i])
+                        d.Add(is[i])
                 }
                 // wrap data-structure with a thread
                 log("Thread: adding new thread: %d", j)
-                t := &Thread{rx: cs[j], d: d}
+                t := &Thread{id: j, rx: cs[j], d: d}
 
                 // spawn thread
-                go func() {
+                go func(t *Thread) {
                         l := t.d
                         found := 0
                         for r := range t.rx {
                                 if verbose {
-                                        log("Thread %d: %s", j, l.String())
+                                        log("Thread %d: %s", t.id, l.String())
                                 }
 
                                 i := l.Find(r)
@@ -132,9 +137,10 @@ func main() {
                                 }
                         }
                         wg.Done()
-                        log("Thread exited, found: %d", found)
+                        // fmt.Printf("Thread exited, found: %d\n", found)
+                        log("Thread exited, found: %d\n", found)
                         return
-                }()
+                }(t)
         }
 
         log("Starting main loop")

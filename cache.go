@@ -3,89 +3,76 @@ package main
 import (
         "fmt"        
         "strings"
-        "time"
+
+        lru "github.com/hashicorp/golang-lru"
 )
 
-type lruCacheNode struct {
-        value *Item
-        timestamp time.Time
-}
-
 type LruCache struct {
-        cache map[Id]lruCacheNode
-        store *([]Item)
-        size int
+        selfadjusting bool
+        m, size int
+        cache *lru.Cache
 }
 
-func NewLruCache(store *([]Item)) *LruCache {
-        size := int(CacheSize * float64(len(*store)))
+// static cache never evicts
+func NewLruCache(m int, selfadjusting bool) *LruCache {
+        size := int(CacheSize * float64(m))
         log("LruCache: creating cache: size: %d", size)
-        c := &LruCache{store: store, size: size}
-        c.cache = make(map[Id]lruCacheNode, size)
+        cache, err := lru.New(size)
+        if err != nil {
+                panic(err)
+        }
+        c := &LruCache{m: m, cache: cache, size: size, selfadjusting: selfadjusting}
         return c
 }
 
-func (l *LruCache) Add(i *Item) {
-        log("LruCache: adding item %d", (*i).Id())
+func (l *LruCache) Add(i Item) {
+        log("LruCache: adding item %d", i.Id())
         // // warm up cache
-        // l.Find((*i).Id())
+        // _ = l.cache.Add(i, i)
 }
 
 func (l *LruCache) String() string {
         ret := fmt.Sprintf("LruCache: size %d: ", l.size)
         var ns []string
-        for _, n := range l.cache {
-		ns = append(ns, fmt.Sprintf("Node: %d (timestamp: %d)",
-                        (*n.value).Id(), n.timestamp.UnixMicro()))
+        for  n := 0; n < l.m; n += 1 {
+                if l.cache.Contains(IntegerItem{id: n}) {
+                        ns = append(ns, fmt.Sprintf("%d", n))
+                }
         }
         return ret + strings.Join(ns, ", ")
 }
 
-func (l *LruCache) Find(val Id) int {
-        log("LruCache: find id %d", val)
-
-        // log("before: %s", l.String())
+func (l *LruCache) Find(val Item) int {
 
         // cached?
-        n, found := l.cache[val]
+        var found bool
+        if l.selfadjusting {
+                log("LruCache: find id %d", val)
+                _, ok := l.cache.Get(val)
+                if !ok {
+                        log("LruCache: Add item %d", val.Id())
+                        l.cache.Add(val, val)
+                }
+                found = ok
+        } else {
+                log("StatCache: find id %d", val)
+                _, found = l.cache.Peek(val)
+                if l.cache.Len() <  l.size {
+                        log("StatCache: Add item %d", val.Id())
+                        l.cache.Add(val, val)
+                }
+        }
         if found {
-                n.timestamp = time.Now()
+                log("LruCache: Found %d", val.Id())
                 return 1
         } else {
-                // add item to the cache
-                i := (*l.store)[val]
-                
-                lru := time.Now()
-                var id Id = -1
-                if len(l.cache) < l.size {
-                        // add
-                        id = i.Id()
-                        log("LruCache: new item %d", id)
-                } else {
-                        // replace
-                        for k, e := range l.cache {
-                                if e.timestamp.Before(lru) {
-                                        id = k
-                                        lru = e.timestamp
-                                }
-                        }
-
-                        log("LruCache: replace item: %d -> %d", id, i.Id())
-                        delete(l.cache, id)
-                        id = i.Id()
-                }
-                newEntry := lruCacheNode{value: &i, timestamp: time.Now() }
-                l.cache[id] = newEntry
-
-                // make cache miss slow
-                // time.Sleep(BusyWait)
+                log("LruCache: Cache miss for %d, busy wait", val.Id())
                 res := 0
                 for i := 0; i < BusyWait; i++ {
                         res += -1
                 }
 
-                // log("after: %s", l.String())
-
+                log("LruCache: Cache miss for %d busy wait over", val.Id())
                 // so that the for loop is not compiled out
                 return res
         }

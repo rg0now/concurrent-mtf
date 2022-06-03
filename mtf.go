@@ -6,7 +6,7 @@ import (
 )
 
 type MtfNode struct {
-        value *Item
+        value Item
         next  *MtfNode
 }
 
@@ -19,8 +19,8 @@ func NewMtf() *Mtf {
         return &Mtf{head: nil, len: 0}
 }
 
-func (l *Mtf) Add(i *Item) {
-        log("Mtf: adding item %d", (*i).Id())
+func (l *Mtf) Add(i Item) {
+        log("Mtf: adding item %d", i.Id())
         n := MtfNode{}
         n.value = i
         if l.len == 0 {
@@ -48,7 +48,7 @@ func (l *Mtf) String() string {
 	} else {
                 ptr := l.head
                 for j := 0; j < l.len; j++ {
-                        ns = append(ns, fmt.Sprintf("Node: %d", (*ptr.value).Id()))
+                        ns = append(ns, fmt.Sprintf("Node: %d", ptr.value.Id()))
                         ptr = ptr.next
                 }
 	}
@@ -56,12 +56,12 @@ func (l *Mtf) String() string {
 }
 
 // Search returns node position with given value from linked list
-func (l *Mtf) Find(val Id) int {
+func (l *Mtf) Find(val Item) int {
         log("Mtf: find id %d", val)
 	ptr := l.head
         var prev *MtfNode = nil
         for j := 0; j < l.len; j++ {
-		if (*ptr.value).Match(val) {
+		if ptr.value.Match(val.Id()) {
                         // MTF
                         // first item aleady?
                         if prev != nil {
@@ -74,7 +74,7 @@ func (l *Mtf) Find(val Id) int {
                         }
 
                         if verbose {
-                                log("Mtf: found id %d at position %d", *(ptr.value), j)
+                                log("Mtf: found id %d at position %d", ptr.value, j)
                                 log(l.String())
                         }
                         return j

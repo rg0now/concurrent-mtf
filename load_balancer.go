@@ -11,9 +11,9 @@ func NewModuloLB(k int, cs []Channel) *ModuloLB {
         return lb
 }
 
-func (lb *ModuloLB) Assign(r Id) {
-        j := r % lb.k
-        log("ModuloLB: Assigning item %d to thread %d", r, j)
+func (lb *ModuloLB) Assign(r Item) {
+        j := r.Id() % lb.k
+        log("ModuloLB: Assigning item %d to thread %d", r.Id(), j)
         lb.pool[j] <- r
 }
 
@@ -28,8 +28,8 @@ func NewSplitLB(k, m int, cs []Channel) *SplitLB {
         return lb
 }
 
-func (lb *SplitLB) Assign(r Id) {
-        j := int(float64(r) /  (float64(lb.m) / float64(lb.k)))
+func (lb *SplitLB) Assign(r Item) {
+        j := int(float64(r.Id()) /  (float64(lb.m) / float64(lb.k)))
         log("SplitLB: Assigning item %d to thread %d", r, j)
         lb.pool[j] <- r
 }
@@ -45,9 +45,9 @@ func NewRoundRobinLB(k int, cs []Channel) *RoundRobinLB {
         return lb
 }
 
-func (lb *RoundRobinLB) Assign(r Id) {
+func (lb *RoundRobinLB) Assign(r Item) {
         j := lb.i % lb.k
-        log("RoundRobinLB: Assigning item %d to thread %d", r, j)
+        log("RoundRobinLB: Assigning item %d to thread %d", r.Id(), j)
         lb.pool[j] <- r
         lb.i += 1
 }

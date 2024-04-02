@@ -4,6 +4,8 @@ go 1.21
 
 toolchain go1.21.8
 
+// toolchain go1.21.8
+
 require (
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/btree v1.1.2
@@ -12,7 +14,4 @@ require (
 	gonum.org/v1/gonum v0.15.0
 )
 
-require (
-	github.com/gijsbers/go-splaytree v1.0.0 // indirect
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
-)
+require golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect

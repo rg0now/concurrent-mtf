@@ -59,6 +59,7 @@ type Thread struct {
 }
 
 var ThreadStore []*Thread
+var LBStore []LoadBalancer
 
 func main() {
 	// general flags
@@ -66,6 +67,7 @@ func main() {
 	var n = flag.IntP("req_num", "n", 10, "Number of requests.")
 	var m = flag.IntP("item_num", "m", 5, "Number of items.")
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads.")
+	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads.")
 	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree (default: mtf).")
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
@@ -83,9 +85,9 @@ func main() {
 	var s Source
 	switch strings.ToLower(*src) {
 	case "uniform":
-		s = &UniformSource{n: *n, m: *m, i: 0}
+		s = &UniformSource{n: *n, m: (*m) / (*lk), i: 0}
 	case "poisson":
-		s = NewPoissonSource(*m, *n, float64(*m)/2.0, &is)
+		s = NewPoissonSource((*m)/(*lk), *n, float64(*m)/2.0, &is)
 	default:
 		panic("Unknown source type: " + *src)
 	}
@@ -96,17 +98,21 @@ func main() {
 		cs[j] = make(Channel, BufferSize)
 	}
 
-	log("Creating LB")
-	var lb LoadBalancer
-	switch strings.ToLower(*sp) {
-	case "modulo":
-		lb = NewModuloLB(*k, cs)
-	case "split":
-		lb = NewSplitLB(*k, *m, cs)
-	case "roundrobin":
-		lb = NewRoundRobinLB(*k, cs)
-	default:
-		panic("Unknown load-balancer: " + *sp)
+	log("Creating LB(s)")
+	LBStore = make([]LoadBalancer, *k)
+	for i := 0; i < *lk; i++ {
+		var lb LoadBalancer
+		switch strings.ToLower(*sp) {
+		case "modulo":
+			lb = NewModuloLB(*k, cs)
+		case "split":
+			lb = NewSplitLB(*k, *m, cs)
+		case "roundrobin":
+			lb = NewRoundRobinLB(*k, cs)
+		default:
+			panic("Unknown load-balancer: " + *sp)
+		}
+		LBStore[i] = lb
 	}
 
 	log("Initializing threads")
@@ -187,17 +193,27 @@ func main() {
 
 	log("Starting main loop")
 	t0 := time.Now()
-	for {
-		i, err := s.Generate()
-		if err != nil {
-			break
-		}
-		lb.Assign(i)
+	wglb := new(sync.WaitGroup)
+	wglb.Add(*lk)
+	for i := 0; i < *lk; i++ {
+		go func(lb LoadBalancer) {
+			for {
+				i, err := s.Generate()
+				if err != nil {
+					break
+				}
+				lb.Assign(i)
+			}
+			wglb.Done()
+		}(LBStore[i])
 	}
+
 	// close all channels
+	wglb.Wait()
 	for j := 0; j < *k; j++ {
 		close(cs[j])
 	}
+
 	// wait for all threads to finish
 	wg.Wait()
 	t1 := time.Now()

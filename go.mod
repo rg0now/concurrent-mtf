@@ -1,13 +1,18 @@
 module github.com/rg0now/concurrent-mtf
 
-go 1.17
+go 1.21
+
+toolchain go1.21.8
+
+require (
+	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
+	github.com/google/btree v1.1.2
+	github.com/hashicorp/golang-lru v1.0.2
+	github.com/spf13/pflag v1.0.5
+	gonum.org/v1/gonum v0.15.0
+)
 
 require (
 	github.com/gijsbers/go-splaytree v1.0.0 // indirect
-	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3 // indirect
-	github.com/google/btree v1.0.1 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/exp v0.0.0-20220518171630-0b5c67f07fdf // indirect
-	gonum.org/v1/gonum v0.11.0 // indirect
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 )

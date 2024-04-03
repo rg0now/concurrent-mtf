@@ -10,10 +10,9 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-const BusyWait = 50000
-
-// const BusyWait = 100000
-const BufferSize int = 1000
+const BusyWait = 50_000
+const WeightedTreeBusyWait = 10_000
+const BufferSize int = 1_000
 
 // const BufferSize int = 1
 // const CacheSize float64 = 0.2
@@ -68,7 +67,7 @@ func main() {
 	var m = flag.IntP("item_num", "m", 5, "Number of items.")
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads.")
 	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads.")
-	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree (default: mtf).")
+	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree|wsplay|wbtree (default: mtf).")
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
@@ -135,6 +134,10 @@ func main() {
 			d = NewSplayTree()
 		case "btree":
 			d = NewBTree()
+		case "wsplay":
+			d = NewWeightedSplayTree()
+		case "wbtree":
+			d = NewWeightedBTree()
 		default:
 			panic("Unknown data structure: " + *ds)
 		}

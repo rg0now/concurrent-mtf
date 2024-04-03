@@ -51,3 +51,28 @@ func (l *SplayTree) Find(val Item) int {
 		return -1
 	}
 }
+
+// WeightedSplay tree is a splay-tree implementation with a somewhat more heavy-weight less
+// function for comparison. This is needed orterwise LB becomes the bottleneck and this is not
+// something we're interested in for now
+type WeightedSplayTree struct {
+	SplayTree
+}
+
+func WeightedLess(a, b interface{}) bool {
+	sum := 0
+	for i := 0; i <= WeightedTreeBusyWait; i++ {
+		sum += i
+	}
+	if sum/2 == 0 {
+		return a.(Item).Id() < b.(Item).Id()
+	} else {
+		return b.(Item).Id() > a.(Item).Id()
+	}
+}
+
+func NewWeightedSplayTree() *WeightedSplayTree {
+	log("Weighted SplayTree: creating, busyweight in less: %d", WeightedTreeBusyWait)
+	l := &WeightedSplayTree{SplayTree: SplayTree{tree: splay.New(WeightedLess)}}
+	return l
+}

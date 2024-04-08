@@ -22,6 +22,7 @@ const BufferSize int = 256_000
 const CacheSize float64 = 0.02
 
 var verbose bool = false
+var seed int64
 
 func log(format string, v ...any) {
 	if verbose {
@@ -72,6 +73,7 @@ func main() {
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a (default: uniform).")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
+	flag.Int64Var(&seed, "seed", 1, "Seed (default: 1).")
 	flag.Parse()
 	verbose = *v
 

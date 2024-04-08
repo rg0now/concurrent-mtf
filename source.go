@@ -5,15 +5,16 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
+var rnd = rand.New(rand.NewSource(seed))
+
 func shuffle(to, from *[]Item) {
 	*to = make([]Item, len(*from))
 	copy(*to, *from)
-	rand.Shuffle(len(*to), func(i, j int) {
+	rnd.Shuffle(len(*to), func(i, j int) {
 		(*to)[i], (*to)[j] = (*to)[j], (*to)[i]
 	})
 }
@@ -33,7 +34,7 @@ func NewUniformSource(m, n int, store *([]Item)) *UniformSource {
 func (s *UniformSource) Generate() (Item, error) {
 	if s.i < s.n {
 		s.i++
-		i := rand.Intn(s.m)
+		i := rnd.Intn(s.m)
 		// log("Source: generating req %d: %d", s.i, i)
 		return s.store[i], nil
 	} else {
@@ -49,6 +50,7 @@ type PoissonSource struct {
 }
 
 func NewPoissonSource(m, n int, la float64, store *([]Item)) *PoissonSource {
+	// TODO: use seed
 	s := &PoissonSource{m: m, n: n, i: 0, rand: &distuv.Poisson{Lambda: la}}
 	shuffle(&s.store, store)
 	// log("%s", s.store)
@@ -84,7 +86,7 @@ func NewZipfSource(name string, m, n int, store *([]Item)) *ZipfSource {
 			s = f
 		}
 	}
-	z := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), s, 1.0, uint64(m)-1)
+	z := rand.NewZipf(rnd, s, 1.0, uint64(m)-1)
 	if z == nil {
 		panic("cannot create zipf distribution")
 	}

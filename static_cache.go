@@ -20,7 +20,7 @@ type StaticCache struct {
 }
 
 func NewStaticCache(store *([]Item)) *StaticCache {
-	size := int(CacheSize * float64(len(*store)))
+	size := int(CacheHitRate * float64(len(*store)))
 	log("StaticCache: creating cache: size: %d", size)
 	c := &StaticCache{store: store, size: size}
 	c.cache = make(map[Id]staticCacheNode, size)

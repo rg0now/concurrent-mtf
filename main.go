@@ -13,13 +13,9 @@ import (
 const CacheBusyWait = 100_000
 const WeightedTreeBusyWait = 10_000
 const BufferSize int = 256_000
+const DefaultCacheHitRate float64 = 0.1
 
-// const BufferSize int = 1
-// const CacheSize float64 = 0.2
-// const CacheSize float64 = 0.025
-// const CacheSize float64 = 0.1
-// const CacheSize float64 = 0.05
-const CacheSize float64 = 0.02
+var CacheHitRate float64
 
 var verbose bool = false
 var seed int64
@@ -65,15 +61,16 @@ var LBStore []LoadBalancer
 func main() {
 	// general flags
 	os.Args[0] = "cmtf"
-	var n = flag.IntP("req_num", "n", 10, "Number of requests.")
-	var m = flag.IntP("item_num", "m", 5, "Number of items.")
-	var k = flag.IntP("thread_num", "k", 1, "Number of threads.")
-	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads.")
-	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree (default: mtf).")
-	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a (default: uniform).")
-	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
-	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
-	flag.Int64Var(&seed, "seed", 1, "Seed (default: 1).")
+	var n = flag.IntP("req_num", "n", 10, "Number of requests")
+	var m = flag.IntP("item_num", "m", 5, "Number of items")
+	var k = flag.IntP("thread_num", "k", 1, "Number of threads")
+	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads")
+	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree")
+	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a")
+	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin")
+	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>")
+	flag.Int64Var(&seed, "seed", 1, "Seed")
+	flag.Float64Var(&CacheHitRate, "cache-hit-rate", DefaultCacheHitRate, "Target cache hit rate")
 	flag.Parse()
 	verbose = *v
 

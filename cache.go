@@ -15,7 +15,7 @@ type LruCache struct {
 
 // static cache never evicts
 func NewLruCache(m int, selfadjusting bool) *LruCache {
-	size := int(CacheSize * float64(m))
+	size := int(CacheHitRate * float64(m))
 	log("LruCache: creating cache: size: %d", size)
 	cache, err := lru.New(size)
 	if err != nil {

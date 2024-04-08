@@ -43,7 +43,6 @@ func (l *LruCache) String() string {
 }
 
 func (l *LruCache) Find(val Item) int {
-
 	// cached?
 	var found bool
 	if l.selfadjusting {
@@ -54,18 +53,19 @@ func (l *LruCache) Find(val Item) int {
 			l.cache.Add(val, val)
 		}
 		found = ok
-	} else {
-		// log("StatCache: find id %d", val)
-		_, found = l.cache.Peek(val)
-		if l.cache.Len() < l.size {
-			log("StatCache: Add item %d", val.Id())
-			l.cache.Add(val, val)
-		}
-	}
+	} // else {
+	// 	// log("StatCache: find id %d", val)
+	// 	_, found = l.cache.Peek(val)
+	// 	if l.cache.Len() < l.size {
+	// 		log("StatCache: Add item %d", val.Id())
+	// 		l.cache.Add(val, val)
+	// 	}
+	// }
 	if found {
 		// log("LruCache: Found %d", val.Id())
 		return 1
 	} else {
+		// statcache always ends up here
 		log("LruCache: Cache miss for %d, busy wait", val.Id())
 		res := 0
 		for i := 0; i < BusyWait; i++ {

@@ -18,7 +18,8 @@ const BufferSize int = 256_000
 // const CacheSize float64 = 0.2
 // const CacheSize float64 = 0.025
 // const CacheSize float64 = 0.1
-const CacheSize float64 = 0.05
+// const CacheSize float64 = 0.05
+const CacheSize float64 = 0.02
 
 var verbose bool = false
 
@@ -68,13 +69,13 @@ func main() {
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads.")
 	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads.")
 	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree|wsplay|wbtree (default: mtf).")
-	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson (default: uniform).")
+	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a (default: uniform).")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
 	flag.Parse()
 	verbose = *v
 
-	log("Creating item list")
+	log("Creating & shuffling item list")
 	is := make([]Item, *m)
 	for j := 0; j < *m; j++ {
 		is[j] = IntegerItem{j}
@@ -82,11 +83,13 @@ func main() {
 
 	log("Creating source")
 	var s Source
-	switch strings.ToLower(*src) {
-	case "uniform":
-		s = &UniformSource{n: *n, m: (*m) / (*lk), i: 0}
-	case "poisson":
+	switch {
+	case *src == "uniform":
+		s = NewUniformSource((*m)/(*lk), *n, &is)
+	case *src == "poisson":
 		s = NewPoissonSource((*m)/(*lk), *n, float64(*m)/2.0, &is)
+	case strings.HasPrefix(*src, "zipf"):
+		s = NewZipfSource(*src, (*m)/(*lk), *n, &is)
 	default:
 		panic("Unknown source type: " + *src)
 	}

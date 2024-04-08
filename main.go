@@ -10,7 +10,7 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-const BusyWait = 100_000
+const CacheBusyWait = 100_000
 const WeightedTreeBusyWait = 10_000
 const BufferSize int = 256_000
 
@@ -69,7 +69,7 @@ func main() {
 	var m = flag.IntP("item_num", "m", 5, "Number of items.")
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads.")
 	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads.")
-	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|statcache|mtf|linkedlist|splay|btree|wsplay|wbtree (default: mtf).")
+	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree (default: mtf).")
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a (default: uniform).")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin (default: modulo).")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>.")
@@ -129,7 +129,7 @@ func main() {
 		switch strings.ToLower(*ds) {
 		case "cache":
 			d = NewLruCache(*m, true)
-		case "statcache":
+		case "nullcache", "statcache":
 			d = NewLruCache(*m, false)
 		case "mtf":
 			d = NewMtf()

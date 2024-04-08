@@ -74,7 +74,7 @@ func (l *StaticCache) Find(val Item) int {
 		// make cache miss slow
 		// time.Sleep(BusyWait)
 		res := 0
-		for i := 0; i < BusyWait; i++ {
+		for i := 0; i < CacheBusyWait; i++ {
 			res += -1
 		}
 

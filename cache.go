@@ -68,7 +68,7 @@ func (l *LruCache) Find(val Item) int {
 		// statcache always ends up here
 		log("LruCache: Cache miss for %d, busy wait", val.Id())
 		res := 0
-		for i := 0; i < BusyWait; i++ {
+		for i := 0; i < CacheBusyWait; i++ {
 			res += -1
 		}
 

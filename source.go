@@ -9,9 +9,8 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
-var rnd = rand.New(rand.NewSource(seed))
-
 func shuffle(to, from *[]Item) {
+	var rnd = rand.New(rand.NewSource(seed))
 	*to = make([]Item, len(*from))
 	copy(*to, *from)
 	rnd.Shuffle(len(*to), func(i, j int) {
@@ -22,11 +21,12 @@ func shuffle(to, from *[]Item) {
 // UNIFORM
 type UniformSource struct {
 	m, n, i int
+	rnd     *rand.Rand
 	store   []Item
 }
 
 func NewUniformSource(m, n int, store *([]Item)) *UniformSource {
-	s := UniformSource{n: n, m: m, i: 0}
+	s := UniformSource{n: n, m: m, i: 0, rnd: rand.New(rand.NewSource(seed))}
 	shuffle(&s.store, store)
 	return &s
 }
@@ -34,7 +34,7 @@ func NewUniformSource(m, n int, store *([]Item)) *UniformSource {
 func (s *UniformSource) Generate() (Item, error) {
 	if s.i < s.n {
 		s.i++
-		i := rnd.Intn(s.m)
+		i := s.rnd.Intn(s.m)
 		// log("Source: generating req %d: %d", s.i, i)
 		return s.store[i], nil
 	} else {
@@ -79,6 +79,7 @@ type ZipfSource struct {
 }
 
 func NewZipfSource(name string, m, n int, store *([]Item)) *ZipfSource {
+	rnd := rand.New(rand.NewSource(seed))
 	s := 1.01
 	args := strings.Split(name, ":")
 	if len(args) == 2 {

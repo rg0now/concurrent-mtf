@@ -40,6 +40,7 @@ type Source interface {
 }
 
 type LoadBalancer interface {
+	Generate() error
 	Assign(i Item)
 }
 
@@ -80,36 +81,35 @@ func main() {
 		is[j] = IntegerItem{j}
 	}
 
-	log("Creating source")
-	var s Source
-	switch {
-	case *src == "uniform":
-		s = NewUniformSource((*m)/(*lk), *n, &is)
-	case *src == "poisson":
-		s = NewPoissonSource((*m)/(*lk), *n, float64(*m)/2.0, &is)
-	case strings.HasPrefix(*src, "zipf"):
-		s = NewZipfSource(*src, (*m)/(*lk), *n, &is)
-	default:
-		panic("Unknown source type: " + *src)
-	}
-
 	log("Creating comm channels")
 	cs := make([]Channel, *k)
 	for j := 0; j < *k; j++ {
 		cs[j] = make(Channel, BufferSize)
 	}
 
-	log("Creating LB(s)")
-	LBStore = make([]LoadBalancer, *k)
+	log("Creating LB(s) and source(s)")
+	LBStore = make([]LoadBalancer, *lk)
 	for i := 0; i < *lk; i++ {
+		var s Source
+		switch {
+		case *src == "uniform":
+			s = NewUniformSource((*m)/(*lk), *n, &is)
+		case *src == "poisson":
+			s = NewPoissonSource((*m)/(*lk), *n, float64(*m)/2.0, &is)
+		case strings.HasPrefix(*src, "zipf"):
+			s = NewZipfSource(*src, (*m)/(*lk), *n, &is)
+		default:
+			panic("Unknown source type: " + *src)
+		}
+
 		var lb LoadBalancer
 		switch strings.ToLower(*sp) {
 		case "modulo":
-			lb = NewModuloLB(*k, cs)
+			lb = NewModuloLB(*k, s, cs)
 		case "split":
-			lb = NewSplitLB(*k, *m, cs)
+			lb = NewSplitLB(*k, *m, s, cs)
 		case "roundrobin":
-			lb = NewRoundRobinLB(*k, cs)
+			lb = NewRoundRobinLB(*k, s, cs)
 		default:
 			panic("Unknown load-balancer: " + *sp)
 		}
@@ -203,11 +203,10 @@ func main() {
 	for i := 0; i < *lk; i++ {
 		go func(lb LoadBalancer) {
 			for {
-				i, err := s.Generate()
+				err := lb.Generate()
 				if err != nil {
 					break
 				}
-				lb.Assign(i)
 			}
 			wglb.Done()
 		}(LBStore[i])

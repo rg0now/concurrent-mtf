@@ -10,9 +10,9 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-const CacheBusyWait = 100_000
-const WeightedTreeBusyWait = 10_000
 const BufferSize int = 256_000
+const CacheBusyWait = 100_000
+const WeightedTreeBusyWait = 100_000
 const DefaultCacheHitRate float64 = 0.1
 
 var CacheHitRate float64

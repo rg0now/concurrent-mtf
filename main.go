@@ -60,6 +60,7 @@ type Thread struct {
 
 var ThreadStore []*Thread
 var LBStore []LoadBalancer
+var isBloom bool
 
 func main() {
 	// general flags
@@ -77,6 +78,7 @@ func main() {
 	flag.Float64Var(&CacheHitRate, "cache-hit-rate", DefaultCacheHitRate, "Target cache hit rate")
 	flag.Parse()
 	verbose = *v
+	isBloom = strings.HasSuffix(strings.ToLower(*ds), "bloom")
 
 	log("Creating & shuffling item list")
 	is := make([]Item, *m)

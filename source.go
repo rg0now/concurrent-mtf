@@ -23,10 +23,15 @@ type UniformSource struct {
 	m, n, i int
 	rnd     *rand.Rand
 	store   []Item
+	mul     float64
 }
 
-func NewUniformSource(m, n int, store *([]Item)) *UniformSource {
-	s := UniformSource{n: n, m: m, i: 0, rnd: rand.New(rand.NewSource(seed))}
+func NewUniformSource(m, n int, store *[]Item) *UniformSource {
+	s := UniformSource{n: n, m: m, i: 0, rnd: rand.New(rand.NewSource(seed)), mul: 1.0}
+	if isBloom {
+		// bloom and sabloom can process requests from a larger universe
+		s.mul = 1.0 / BloomFillRatio
+	}
 	shuffle(&s.store, store)
 	return &s
 }
@@ -35,8 +40,9 @@ func (s *UniformSource) Generate() (Item, error) {
 	if s.i < s.n {
 		s.i++
 		i := s.rnd.Intn(s.m)
-		// log("Source: generating req %d: %d", s.i, i)
-		return s.store[i], nil
+		val := int(float64(s.store[i].Id()) * s.mul)
+		// log("Source: generating req %d: %d, store: %d, multiplier: %f", s.i, val, s.store[i].Id(), s.mul)
+		return IntegerItem{val}, nil
 	} else {
 		return IntegerItem{}, fmt.Errorf("Done")
 	}

@@ -104,15 +104,9 @@ func (bf *BloomFilter) add(data []byte) {
 	}
 }
 
-func (bf *BloomFilter) Find(_ Item) int {
-	// consider the fill ratio
-	maxElem := int(math.Ceil(float64(bf.n) / BloomFillRatio))
-
-	// randomize
-	r := bf.rnd.Intn(maxElem)
-
+func (bf *BloomFilter) Find(i Item) int {
 	// convert to a []byte
-	binary.LittleEndian.PutUint64(bs, uint64(r))
+	binary.LittleEndian.PutUint64(bs, uint64(i.Id()))
 
 	// test
 	if bf.test(bs) {

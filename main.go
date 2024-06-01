@@ -14,6 +14,8 @@ const BufferSize int = 256_000
 const CacheBusyWait = 100_000
 const WeightedTreeBusyWait = 100_000
 const DefaultCacheHitRate float64 = 0.1
+const BloomFalsePositiveRate float64 = 0.01
+const BloomFillRatio float64 = 0.5
 
 var CacheHitRate float64
 
@@ -66,7 +68,8 @@ func main() {
 	var m = flag.IntP("item_num", "m", 5, "Number of items")
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads")
 	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads")
-	var ds = flag.StringP("data-structure", "d", "mtf", "Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree")
+	var ds = flag.StringP("data-structure", "d", "mtf",
+		"Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree|bloom|sabloom")
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>")
@@ -140,6 +143,10 @@ func main() {
 			d = NewWeightedSplayTree()
 		case "wbtree":
 			d = NewWeightedBTree()
+		case "bloom":
+			d = NewBloomFilter(*m, BloomFalsePositiveRate)
+		case "sabloom":
+			d = NewSelfAdjustingBloomFilter(*m, BloomFalsePositiveRate)
 		default:
 			panic("Unknown data structure: " + *ds)
 		}
@@ -152,6 +159,10 @@ func main() {
 		go func(t *Thread) {
 			for i := 0; i < *m; i++ {
 				t.d.Add(is[i])
+				// if verbose {
+				// 	log("Thread %d: added: %d, state: %s",
+				// 		t.id, is[i].Id(), t.d.String())
+				// }
 			}
 			wg.Done()
 		}(t)
@@ -173,12 +184,15 @@ func main() {
 				// }
 				if verbose && found == 0 {
 					tt0 = time.Now() // reset thread timer: this is the real point where thread starts
-					log("Entering thread %d", t.id)
 				}
 
 				i := l.Find(r)
 				if i >= 0 {
 					found++
+				}
+				if verbose {
+					log("Thread %d: lookup: %d, found: %t, state: %s",
+						t.id, r.Id(), i > 0, l.String())
 				}
 			}
 			wg.Done()
@@ -188,7 +202,8 @@ func main() {
 			tt1 := time.Now()
 			dt := tt1.Sub(tt0)
 
-			// fmt.Printf("Thread %d exited, found: %d, running time: %s\n", t.id, found, dt)
+			// fmt.Printf("Thread %d exited, found: %d, running time: %s\n", t.id,
+			// found, dt)
 
 			log("Thread %d exited, found: %d, running time: %s", t.id, found, dt)
 
@@ -220,6 +235,7 @@ func main() {
 
 	// wait for all threads to finish
 	wg.Wait()
+
 	t1 := time.Now()
 	d := t1.Sub(t0)
 

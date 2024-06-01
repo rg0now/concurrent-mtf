@@ -6,6 +6,7 @@ require (
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/btree v1.1.2
 	github.com/hashicorp/golang-lru v1.0.2
+	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/pflag v1.0.5
 	gonum.org/v1/gonum v0.13.0
 )

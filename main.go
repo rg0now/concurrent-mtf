@@ -14,7 +14,7 @@ const BufferSize int = 256_000
 const CacheBusyWait = 100_000
 const WeightedTreeBusyWait = 100_000
 const DefaultCacheHitRate float64 = 0.1
-const BloomFalsePositiveRate float64 = 0.01
+const BloomFalsePositiveRate float64 = 0.001
 const BloomFillRatio float64 = 0.5
 
 var CacheHitRate float64
@@ -70,7 +70,7 @@ func main() {
 	var k = flag.IntP("thread_num", "k", 1, "Number of threads")
 	var lk = flag.IntP("lb_thread_num", "t", 1, "Number of LB threads")
 	var ds = flag.StringP("data-structure", "d", "mtf",
-		"Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree|bloom|sabloom")
+		"Data-structure: cache|nullcache|mtf|linkedlist|splay|btree|wsplay|wbtree|bloom|sabloom|wbloom|wsabloom")
 	var src = flag.StringP("source", "s", "uniform", "Source: uniform|poisson|zipf:a")
 	var sp = flag.StringP("load-balancer", "l", "modulo", "Load-balaner: modulo|split|roundrobin")
 	var v = flag.BoolP("verbose", "v", false, "Verbose logging, identical to <-l all:DEBUG>")
@@ -149,6 +149,10 @@ func main() {
 			d = NewBloomFilter(*m, BloomFalsePositiveRate)
 		case "sabloom":
 			d = NewSelfAdjustingBloomFilter(*m, BloomFalsePositiveRate)
+		case "wbloom":
+			d = NewWeightedBloomFilter(*m, BloomFalsePositiveRate)
+		case "wsabloom":
+			d = NewWeightedSelfAdjustingBloomFilter(*m, BloomFalsePositiveRate)
 		default:
 			panic("Unknown data structure: " + *ds)
 		}
@@ -240,6 +244,11 @@ func main() {
 
 	t1 := time.Now()
 	d := t1.Sub(t0)
+
+	// for j := 0; j < *k; j++ {
+	// 	l := ThreadStore[j].d
+	// 	fmt.Printf("Final state: %s\n", l.String())
+	// }
 
 	fmt.Printf("%d\t%d\t%d\t%v\t%f\n", *k, *m, *n, d, float64(*n)/d.Seconds())
 }

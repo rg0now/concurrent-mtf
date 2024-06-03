@@ -12,6 +12,7 @@ import (
 )
 
 var bs = make([]byte, 8)
+var sum int
 
 type hasher struct {
 	hash hash.Hash64
@@ -21,31 +22,30 @@ type hasher struct {
 
 // BloomFilter represents a single Bloom filter structure.
 type BloomFilter struct {
-	bitSet []bool   // The bit array represented as a slice of bool
-	n      int      // The expected number of elements to store
-	m      int      // The number of bits in the bit set (shortcut for len(bitSet)
-	k      int      // The number of hash functions to use (shortcut for len(hashes)
-	hashes []hasher // The hash functions to use
-	front  *hasher
-	rnd    *rand.Rand // For randomizing lookups
-	sa     bool       // Self-adjusting?
+	bitSet       []bool // The bit array represented as a slice of bool
+	n            int    // The expected number of elements to store
+	m            int    // The number of bits in the bit set (shortcut for len(bitSet)
+	k            int    // The number of hash functions to use (shortcut for len(hashes)
+	hashCounter  int
+	hashes       []hasher // The hash functions to use
+	front        *hasher
+	rnd          *rand.Rand // For randomizing lookups
+	sa, weighted bool       // Self-adjusting? Weighted hashes?
 }
 
 // NewBloomFilterWithHasher creates a new Bloom filter with the given number of elements (n) and
 // false positive rate (p).
 func NewBloomFilter(n int, p float64) *BloomFilter {
-	return newBloomFilter(n, p, false)
+	return newBloomFilter(n, p, false, false)
 }
 
 // NewBloomSelfAdjustingFilter creates a new self-adjusting Bloom filter with the given number of elements (n) and
 // false positive rate (p).
 func NewSelfAdjustingBloomFilter(n int, p float64) *BloomFilter {
-	return newBloomFilter(n, p, true)
+	return newBloomFilter(n, p, true, false)
 }
 
-// NewBloomFilterWithHasher creates a new Bloom filter with the given number of elements (n) and
-// false positive rate (p).
-func newBloomFilter(n int, p float64, sa bool) *BloomFilter {
+func newBloomFilter(n int, p float64, sa, weighted bool) *BloomFilter {
 	if n == 0 {
 		panic("number of elements cannot be 0")
 	}
@@ -63,29 +63,16 @@ func newBloomFilter(n int, p float64, sa bool) *BloomFilter {
 	}
 
 	return &BloomFilter{
-		n:      n,
-		m:      m,
-		k:      k,
-		bitSet: make([]bool, m),
-		hashes: hashes,
-		front:  &hashes[0],
-		rnd:    rand.New(rand.NewSource(seed)),
-		sa:     sa,
+		n:        n,
+		m:        m,
+		k:        k,
+		bitSet:   make([]bool, m),
+		hashes:   hashes,
+		front:    &hashes[0],
+		rnd:      rand.New(rand.NewSource(seed)),
+		sa:       sa,
+		weighted: weighted,
 	}
-}
-
-// getOptimalParams calculates the optimal parameters for the Bloom filter,
-// the number of bits in the bit set (m) and the number of hash functions (k).
-func getOptimalParams(n int, p float64) (int, int) {
-	m := int(math.Ceil(-1 * float64(n) * math.Log(p) / math.Pow(math.Log(2), 2)))
-	if m == 0 {
-		m = 1
-	}
-	k := int(math.Ceil((float64(m) / float64(n)) * math.Log(2)))
-	if k == 0 {
-		k = 1
-	}
-	return m, k
 }
 
 func (bf *BloomFilter) Add(i Item) {
@@ -121,8 +108,16 @@ func (bf *BloomFilter) test(data []byte) bool {
 		hash.Reset()
 		hash.Write(data)
 		hashValue := hash.Sum64() % uint64(bf.m)
+		if bf.weighted {
+			for i := 0; i <= 10*WeightedTreeBusyWait; i++ {
+				sum += i
+			}
+		}
+		bf.hashCounter++
 		if !bf.bitSet[hashValue] {
-			// fmt.Printf("false with value %d at hash %d\n", hashValue, current.id)
+			// if verbose {
+			// 	fmt.Printf("false with value %d at hash %d\n", hashValue, current.id)
+			// }
 			if bf.sa && current != bf.front {
 				// move-to-front
 				// remove current from the list
@@ -147,10 +142,53 @@ func (bf *BloomFilter) String() string {
 	if bf.sa {
 		t = "SA_Bloomfilter"
 	}
-	ret := fmt.Sprintf("%s: n(#elems): %d, m(width) %d, k(#hash): %d, hash-order: ", t, bf.n, bf.m, bf.k)
+	ret := fmt.Sprintf("%s: n(#elems): %d, m(width) %d, k(#hash): %d, hash-counter: %d, hash-order: ",
+		t, bf.n, bf.m, bf.k, bf.hashCounter)
 	hs := []string{}
 	for current := bf.front; current != nil; current = current.next {
 		hs = append(hs, fmt.Sprintf("%d", current.id))
 	}
 	return ret + strings.Join(hs, ", ")
+}
+
+// ////////////////
+// Weighted
+// ////////////////
+type WeightedBloomFilter struct {
+	*BloomFilter
+}
+
+// NewBloomFilterWithHasher creates a new Bloom filter with the given number of elements (n) and
+// false positive rate (p) using weighted hashing.
+func NewWeightedBloomFilter(n int, p float64) *WeightedBloomFilter {
+	return &WeightedBloomFilter{
+		newBloomFilter(n, p, false, true),
+	}
+}
+
+type WeightedSelfAdjustingBloomFilter struct {
+	*BloomFilter
+}
+
+// NewWeightedBloomSelfAdjustingFilter creates a new self-adjusting Bloom filter with the given number of elements (n) and
+// false positive rate (p) using weighted hashing.
+func NewWeightedSelfAdjustingBloomFilter(n int, p float64) *WeightedSelfAdjustingBloomFilter {
+	return &WeightedSelfAdjustingBloomFilter{
+		newBloomFilter(n, p, true, true),
+	}
+}
+
+// ////////
+// getOptimalParams calculates the optimal parameters for the Bloom filter,
+// the number of bits in the bit set (m) and the number of hash functions (k).
+func getOptimalParams(n int, p float64) (int, int) {
+	m := int(math.Ceil(-1 * float64(n) * math.Log(p) / math.Pow(math.Log(2), 2)))
+	if m == 0 {
+		m = 1
+	}
+	k := int(math.Ceil((float64(m) / float64(n)) * math.Log(2)))
+	if k == 0 {
+		k = 1
+	}
+	return m, k
 }

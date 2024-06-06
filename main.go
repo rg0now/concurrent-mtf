@@ -208,8 +208,8 @@ func main() {
 			tt1 := time.Now()
 			dt := tt1.Sub(tt0)
 
-			// fmt.Printf("Thread %d exited, found: %d, running time: %s\n", t.id,
-			// found, dt)
+			fmt.Printf("Thread %d exited, found: %d, running time: %s\n", t.id,
+				found, dt)
 
 			log("Thread %d exited, found: %d, running time: %s", t.id, found, dt)
 
@@ -245,10 +245,25 @@ func main() {
 	t1 := time.Now()
 	d := t1.Sub(t0)
 
-	// for j := 0; j < *k; j++ {
-	// 	l := ThreadStore[j].d
-	// 	fmt.Printf("Final state: %s\n", l.String())
-	// }
+	if isBloom {
+		totalHashNum := 0
+		for j := 0; j < *k; j++ {
+			l := ThreadStore[j].d
+			// fmt.Printf("Final state: %s\n", l.String())
+			if isBloom {
+				switch b := l.(type) {
+				case *BloomFilter:
+					totalHashNum += b.hashCounter
+				case *WeightedBloomFilter:
+					totalHashNum += b.hashCounter
+				case *WeightedSelfAdjustingBloomFilter:
+					totalHashNum += b.hashCounter
+				}
+			}
+		}
+		fmt.Printf("%d\t%d\t%d\t%v\t%f\t%d\n", *k, *m, *n, d, float64(*n)/d.Seconds(), totalHashNum)
+	} else {
 
-	fmt.Printf("%d\t%d\t%d\t%v\t%f\n", *k, *m, *n, d, float64(*n)/d.Seconds())
+		fmt.Printf("%d\t%d\t%d\t%v\t%f\n", *k, *m, *n, d, float64(*n)/d.Seconds())
+	}
 }
